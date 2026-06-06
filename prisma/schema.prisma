@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @default("Felix Okun")
+  company   String   @default("OKUN Systems")
+  role      String   @default("Founder & CEO")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KPI {
+  id          String     @id @default(cuid())
+  name        String
+  category    String
+  unit        String
+  target      Float
+  current     Float      @default(0)
+  previous    Float      @default(0)
+  trend       String     @default("up")
+  period      String     @default("MTD")
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  values      KPIValue[]
+}
+
+model KPIValue {
+  id        String   @id @default(cuid())
+  kpiId     String
+  kpi       KPI      @relation(fields: [kpiId], references: [id])
+  value     Float
+  date      DateTime @default(now())
+  note      String?
+}
+
+model Goal {
+  id           String      @id @default(cuid())
+  title        String
+  description  String?
+  category     String
+  status       String      @default("active")
+  priority     Int         @default(1)
+  targetValue  Float?
+  currentValue Float?      @default(0)
+  unit         String?
+  deadline     DateTime?
+  progress     Float       @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  milestones   Milestone[]
+}
+
+model Milestone {
+  id        String    @id @default(cuid())
+  goalId    String
+  goal      Goal      @relation(fields: [goalId], references: [id])
+  title     String
+  completed Boolean   @default(false)
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Bottleneck {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  impact      String   @default("medium")
+  status      String   @default("open")
+  area        String
+  duration    String?
+  actions     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Opportunity {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  potential   String   @default("medium")
+  timeframe   String?
+  status      String   @default("identified")
+  area        String
+  actions     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Strategy {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        String   @default("strategy")
+  status      String   @default("active")
+  priority    Int      @default(1)
+  hypothesis  String?
+  result      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyPlan {
+  id        String      @id @default(cuid())
+  date      DateTime    @default(now())
+  progress  Float       @default(0)
+  note      String?
+  tasks     DailyTask[]
+  createdAt DateTime    @default(now())
+}
+
+model DailyTask {
+  id        String    @id @default(cuid())
+  planId    String
+  plan      DailyPlan @relation(fields: [planId], references: [id])
+  title     String
+  startTime String
+  endTime   String
+  category  String    @default("work")
+  completed Boolean   @default(false)
+  priority  Int       @default(1)
+  color     String    @default("#3b82f6")
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  type        String   @default("meeting")
+  location    String?
+  color       String   @default("#3b82f6")
+  createdAt   DateTime @default(now())
+}
+
+model ContentItem {
+  id          String    @id @default(cuid())
+  title       String
+  body        String?
+  platform    String
+  type        String
+  status      String    @default("draft")
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  tags        String?
+  metrics     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Memory {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  category   String
+  tags       String?
+  importance Int      @default(1)
+  source     String?
+  createdAt  DateTime @default(now())
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  severity    String   @default("info")
+  category    String
+  isRead      Boolean  @default(false)
+  actionUrl   String?
+  createdAt   DateTime @default(now())
+}
+
+model Agent {
+  id        String    @id @default(cuid())
+  name      String
+  type      String
+  status    String    @default("active")
+  lastRun   DateTime?
+  config    String?
+  createdAt DateTime  @default(now())
+}
+
+model Review {
+  id             String   @id @default(cuid())
+  weekNumber     Int
+  year           Int
+  title          String
+  wins           String?
+  losses         String?
+  learnings      String?
+  nextWeekFocus  String?
+  kpiSnapshot    String?
+  createdAt      DateTime @default(now())
+}
+
+model Automation {
+  id        String    @id @default(cuid())
+  name      String
+  trigger   String
+  condition String?
+  action    String
+  isActive  Boolean   @default(true)
+  lastRun   DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Integration {
+  id        String    @id @default(cuid())
+  name      String
+  type      String
+  status    String    @default("disconnected")
+  config    String?
+  lastSync  DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  context   String?
+  createdAt DateTime @default(now())
+}
