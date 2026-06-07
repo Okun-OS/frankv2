@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -71,12 +71,12 @@ model Milestone {
 model Bottleneck {
   id          String   @id @default(cuid())
   title       String
-  description String?
+  description String?  @db.Text
   impact      String   @default("medium")
   status      String   @default("open")
   area        String
   duration    String?
-  actions     String?
+  actions     String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -84,12 +84,12 @@ model Bottleneck {
 model Opportunity {
   id          String   @id @default(cuid())
   title       String
-  description String?
+  description String?  @db.Text
   potential   String   @default("medium")
   timeframe   String?
   status      String   @default("identified")
   area        String
-  actions     String?
+  actions     String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -97,12 +97,12 @@ model Opportunity {
 model Strategy {
   id          String   @id @default(cuid())
   title       String
-  description String?
+  description String?  @db.Text
   type        String   @default("strategy")
   status      String   @default("active")
   priority    Int      @default(1)
-  hypothesis  String?
-  result      String?
+  hypothesis  String?  @db.Text
+  result      String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -144,7 +144,7 @@ model CalendarEvent {
 model ContentItem {
   id          String    @id @default(cuid())
   title       String
-  body        String?
+  body        String?   @db.Text
   platform    String
   type        String
   status      String    @default("draft")
@@ -159,7 +159,7 @@ model ContentItem {
 model Memory {
   id         String   @id @default(cuid())
   title      String
-  content    String
+  content    String   @db.Text
   category   String
   tags       String?
   importance Int      @default(1)
@@ -184,7 +184,7 @@ model Agent {
   type      String
   status    String    @default("active")
   lastRun   DateTime?
-  config    String?
+  config    String?   @db.Text
   createdAt DateTime  @default(now())
 }
 
@@ -193,11 +193,11 @@ model Review {
   weekNumber     Int
   year           Int
   title          String
-  wins           String?
-  losses         String?
-  learnings      String?
-  nextWeekFocus  String?
-  kpiSnapshot    String?
+  wins           String?  @db.Text
+  losses         String?  @db.Text
+  learnings      String?  @db.Text
+  nextWeekFocus  String?  @db.Text
+  kpiSnapshot    String?  @db.Text
   createdAt      DateTime @default(now())
 }
 
@@ -217,7 +217,7 @@ model Integration {
   name      String
   type      String
   status    String    @default("disconnected")
-  config    String?
+  config    String?   @db.Text
   lastSync  DateTime?
   createdAt DateTime  @default(now())
 }
@@ -225,7 +225,7 @@ model Integration {
 model ChatMessage {
   id        String   @id @default(cuid())
   role      String
-  content   String
-  context   String?
+  content   String   @db.Text
+  context   String?  @db.Text
   createdAt DateTime @default(now())
 }
