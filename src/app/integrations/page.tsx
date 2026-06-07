@@ -227,6 +227,45 @@ export default function IntegrationsPage() {
   const linkedInIntegration = status?.integrations?.find((i) => i.type === 'linkedin')
   const isLinkedInConnected = !!linkedInToken && linkedInIntegration?.status === 'connected'
 
+  const [sheetUrl, setSheetUrl] = useState('')
+  const [sheetSyncing, setSheetSyncing] = useState(false)
+  const [sheetResult, setSheetResult] = useState<{ synced: number; replies: number; meetings: number; replyRate: string } | null>(null)
+  const [sheetError, setSheetError] = useState<string | null>(null)
+  const [sheetStatus, setSheetStatus] = useState<{ connected: boolean; sheetId: string | null; lastSync: string | null } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/sync/sheets').then(r => r.json()).then(setSheetStatus).catch(() => {})
+  }, [])
+
+  async function syncSheets() {
+    const rawId = sheetUrl.trim()
+    const match = rawId.match(/\/d\/([a-zA-Z0-9-_]+)/)
+    const sheetId = match ? match[1] : rawId
+    if (!sheetId) return
+
+    setSheetSyncing(true)
+    setSheetResult(null)
+    setSheetError(null)
+    try {
+      const res = await fetch('/api/sync/sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetId }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setSheetError(data.error)
+      } else {
+        setSheetResult(data)
+        setSheetStatus({ connected: true, sheetId, lastSync: new Date().toISOString() })
+      }
+    } catch {
+      setSheetError('Verbindungsfehler')
+    } finally {
+      setSheetSyncing(false)
+    }
+  }
+
   async function syncGmail() {
     setSyncing(true)
     setSyncResult(null)
@@ -856,6 +895,124 @@ export default function IntegrationsPage() {
                 </p>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Google Sheets Outreach Card */}
+        <div
+          className="card p-5"
+          style={{ borderColor: sheetStatus?.connected ? 'rgba(34,197,94,0.2)' : '#1e2130' }}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              style={{
+                backgroundColor: 'rgba(52,168,83,0.1)',
+                border: '1px solid rgba(52,168,83,0.2)',
+                borderRadius: '10px',
+                padding: '10px',
+                fontSize: '24px',
+                lineHeight: 1,
+              }}
+            >
+              📊
+            </div>
+            <div>
+              <h2 style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 700 }}>Google Sheets — Outreach</h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                {sheetStatus?.connected ? (
+                  <>
+                    <CheckCircle size={12} style={{ color: '#22c55e' }} />
+                    <span style={{ color: '#22c55e', fontSize: '11px', fontWeight: 500 }}>Verbunden</span>
+                    {sheetStatus.lastSync && (
+                      <span style={{ color: '#475569', fontSize: '11px' }}>· zuletzt {formatTime(sheetStatus.lastSync)}</span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={12} style={{ color: '#64748b' }} />
+                    <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 500 }}>Noch nicht verbunden</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <p style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
+            Frank liest dein Outreach-Sheet und berechnet automatisch Antwortquote, Terminbuchungen und welche Zielgruppen reagieren. Spalten wie Name, Unternehmen, Status, Datum werden automatisch erkannt.
+          </p>
+
+          <div className="flex gap-2 mb-3">
+            <input
+              style={{
+                flex: 1,
+                background: '#161921',
+                border: '1px solid #1e2130',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                color: '#f1f5f9',
+                fontSize: '13px',
+                outline: 'none',
+              }}
+              placeholder={sheetStatus?.sheetId ? `Sheet ID: ${sheetStatus.sheetId}` : 'Google Sheet URL oder Sheet ID einfügen...'}
+              value={sheetUrl}
+              onChange={e => setSheetUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && syncSheets()}
+            />
+            <button
+              onClick={syncSheets}
+              disabled={sheetSyncing || !sheetUrl.trim()}
+              style={{
+                background: sheetUrl.trim() ? '#22c55e' : '#1e2130',
+                color: sheetUrl.trim() ? '#000' : '#475569',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '10px 18px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: sheetUrl.trim() && !sheetSyncing ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <RefreshCw size={12} className={sheetSyncing ? 'animate-spin' : ''} />
+              {sheetSyncing ? 'Sync...' : 'Einlesen'}
+            </button>
+          </div>
+
+          {sheetError && (
+            <div style={{ color: '#ef4444', fontSize: '12px', padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <AlertCircle size={12} />
+              {sheetError}
+            </div>
+          )}
+
+          {sheetResult && (
+            <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '10px', padding: '12px 16px' }}>
+              <p style={{ color: '#22c55e', fontSize: '12px', fontWeight: 700, marginBottom: '8px' }}>
+                ✓ {sheetResult.synced} Kontakte eingelesen
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[
+                  { label: 'Antworten', value: sheetResult.replies, color: '#22c55e' },
+                  { label: 'Termine', value: sheetResult.meetings, color: '#f59e0b' },
+                  { label: 'Antwortrate', value: sheetResult.replyRate, color: '#3b82f6' },
+                ].map(item => (
+                  <div key={item.label} style={{ background: '#0d0e13', borderRadius: '8px', padding: '8px 10px' }}>
+                    <p style={{ color: '#475569', fontSize: '10px' }}>{item.label}</p>
+                    <p style={{ color: item.color, fontSize: '16px', fontWeight: 700 }}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!isGmailConnected && (
+            <p style={{ color: '#f59e0b', fontSize: '11px', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <AlertCircle size={11} />
+              Google muss zuerst verbunden sein (oben), damit der Sheet-Sync funktioniert.
+            </p>
           )}
         </div>
 
