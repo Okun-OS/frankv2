@@ -64,12 +64,14 @@ export async function POST(req: NextRequest) {
       style,
       previousPrompt,
       feedback,
+      referenceImage,
     }: {
       prompt: string
       format: ImageFormat
       style: string
       previousPrompt?: string
       feedback?: string
+      referenceImage?: string
     } = body
 
     if (!prompt || !format) {
@@ -112,51 +114,88 @@ export async function POST(req: NextRequest) {
     let imageUrl: string | null = null
     let revisedPrompt = finalPrompt
 
-    // Try gpt-image-1 first (newest OpenAI image model)
-    try {
-      const response = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt: finalPrompt,
-        n: 1,
-        size,
-      })
-      const item = response.data?.[0]
-      if (item) {
-        // gpt-image-1 returns b64_json by default
-        if ('b64_json' in item && item.b64_json) {
-          imageUrl = `data:image/png;base64,${item.b64_json}`
-        } else if (item.url) {
-          imageUrl = item.url
+    // When reference image is provided, use edit endpoint to incorporate face/likeness
+    if (referenceImage) {
+      const refPrompt = `Maintain the person's face and likeness from the reference image. ${finalPrompt}`
+      const imageBuffer = Buffer.from(referenceImage, 'base64')
+      const imageFile = new File([imageBuffer], 'reference.png', { type: 'image/png' })
+      try {
+        const response = await openai.images.edit({
+          model: 'gpt-image-1',
+          image: imageFile,
+          prompt: refPrompt,
+          n: 1,
+          size: '1024x1024',
+        })
+        const item = response.data?.[0]
+        if (item) {
+          if ('b64_json' in item && item.b64_json) {
+            imageUrl = `data:image/png;base64,${item.b64_json}`
+          } else if (item.url) {
+            imageUrl = item.url
+          }
+        }
+      } catch {
+        // Fallback: generate without reference if edit fails
+        const response = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt: refPrompt,
+          n: 1,
+          size: '1024x1024',
+        })
+        const item = response.data?.[0]
+        if (item) {
+          if ('b64_json' in item && item.b64_json) {
+            imageUrl = `data:image/png;base64,${item.b64_json}`
+          } else if (item.url) {
+            imageUrl = item.url
+          }
         }
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : ''
-      // Fall back to dall-e-3
-      if (msg.includes('does not exist') || msg.includes('model') || msg.includes('not found')) {
-        try {
-          const response = await openai.images.generate({
-            model: 'dall-e-3',
-            prompt: finalPrompt,
-            n: 1,
-            size,
-          })
-          const item = response.data?.[0]
-          if (item?.url) {
+    } else {
+      // No reference image — try gpt-image-1 first, fall back down the chain
+      try {
+        const response = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt: finalPrompt,
+          n: 1,
+          size,
+        })
+        const item = response.data?.[0]
+        if (item) {
+          if ('b64_json' in item && item.b64_json) {
+            imageUrl = `data:image/png;base64,${item.b64_json}`
+          } else if (item.url) {
             imageUrl = item.url
-            revisedPrompt = (item as { revised_prompt?: string }).revised_prompt || finalPrompt
           }
-        } catch {
-          // Fall back to dall-e-2 (supports only 1024x1024)
-          const response = await openai.images.generate({
-            model: 'dall-e-2',
-            prompt: finalPrompt.slice(0, 1000),
-            n: 1,
-            size: '1024x1024',
-          })
-          imageUrl = response.data?.[0]?.url ?? null
         }
-      } else {
-        throw e
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : ''
+        if (msg.includes('does not exist') || msg.includes('model') || msg.includes('not found')) {
+          try {
+            const response = await openai.images.generate({
+              model: 'dall-e-3',
+              prompt: finalPrompt,
+              n: 1,
+              size,
+            })
+            const item = response.data?.[0]
+            if (item?.url) {
+              imageUrl = item.url
+              revisedPrompt = (item as { revised_prompt?: string }).revised_prompt || finalPrompt
+            }
+          } catch {
+            const response = await openai.images.generate({
+              model: 'dall-e-2',
+              prompt: finalPrompt.slice(0, 1000),
+              n: 1,
+              size: '1024x1024',
+            })
+            imageUrl = response.data?.[0]?.url ?? null
+          }
+        } else {
+          throw e
+        }
       }
     }
 

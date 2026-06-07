@@ -21,6 +21,9 @@ import {
   Image,
   Send,
   Loader2,
+  Upload,
+  X,
+  UserCircle,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -52,6 +55,7 @@ interface PipelineData {
   imageUrl?: string
   revisedPrompt?: string
   imageHistory?: string[]
+  referenceImage?: string
   finalText?: string
   finalImageUrl?: string
 }
@@ -682,6 +686,9 @@ function CreativeStage({
   const [error, setError] = useState<string | null>(null)
   const [style, setStyle] = useState(data.imageStyle || 'Professionell')
   const [imageUrl, setImageUrl] = useState(data.imageUrl || '')
+  const [refPreview, setRefPreview] = useState<string | null>(null)
+  const [refBase64, setRefBase64] = useState<string | null>(data.referenceImage || null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function getImageFormat() {
     const platformDef = PLATFORMS.find((p) => p.value === data.platform)
@@ -694,6 +701,27 @@ function CreativeStage({
     return 'linkedin_post'
   }
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setRefPreview(dataUrl)
+      const base64 = dataUrl.split(',')[1]
+      setRefBase64(base64)
+      onChange({ referenceImage: base64 })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function removeReference() {
+    setRefPreview(null)
+    setRefBase64(null)
+    onChange({ referenceImage: undefined })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   async function generateImage() {
     setLoading(true)
     setError(null)
@@ -704,7 +732,7 @@ function CreativeStage({
       const res = await fetch('/api/content/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, format, style }),
+        body: JSON.stringify({ prompt, format, style, referenceImage: refBase64 }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Fehler')
@@ -754,6 +782,76 @@ function CreativeStage({
         </div>
       </div>
 
+      {/* Reference image upload */}
+      <div style={{ marginBottom: '20px' }}>
+        <p style={{ color: '#64748b', fontSize: '11px', fontWeight: 500, marginBottom: '8px' }}>
+          REFERENZBILD (optional — z.B. dein Gesicht)
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: 'none' }}
+        />
+        {!refPreview ? (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px dashed #2d3748',
+              background: 'transparent',
+              color: '#64748b',
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#f59e0b'; (e.currentTarget as HTMLButtonElement).style.color = '#f59e0b' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#2d3748'; (e.currentTarget as HTMLButtonElement).style.color = '#64748b' }}
+          >
+            <UserCircle size={14} />
+            Referenzbild hochladen
+            <Upload size={12} />
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src={refPreview}
+              alt="Referenz"
+              style={{
+                width: '60px',
+                height: '60px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '1px solid rgba(245,158,11,0.4)',
+              }}
+            />
+            <div>
+              <p style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 500, marginBottom: '4px' }}>
+                Referenzbild aktiv
+              </p>
+              <p style={{ color: '#475569', fontSize: '11px', marginBottom: '6px' }}>
+                Das Modell wird dein Gesicht/Bild einarbeiten
+              </p>
+              <button
+                onClick={removeReference}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  background: 'transparent', border: 'none', color: '#ef4444',
+                  fontSize: '11px', cursor: 'pointer', padding: 0,
+                }}
+              >
+                <X size={11} /> Entfernen
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{ marginBottom: '16px' }}>
         <Button variant="gold" size="sm" onClick={generateImage} disabled={loading}>
           {loading ? <Spinner /> : <Image size={12} />}
@@ -783,7 +881,9 @@ function CreativeStage({
               size={32}
               style={{ color: '#f59e0b', animation: 'spin 1s linear infinite', margin: '0 auto 8px' }}
             />
-            <p style={{ color: '#64748b', fontSize: '12px' }}>DALL-E 3 generiert dein Creative...</p>
+            <p style={{ color: '#64748b', fontSize: '12px' }}>
+              {refBase64 ? 'Generiert mit deinem Referenzbild...' : 'KI generiert dein Creative...'}
+            </p>
           </div>
         </div>
       )}
