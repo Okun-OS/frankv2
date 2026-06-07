@@ -4,44 +4,32 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
-  Briefcase,
-  Map,
+  MessageSquare,
+  TrendingUp,
   Target,
-  BarChart3,
-  Brain,
-  AlertTriangle,
-  Rocket,
-  CheckSquare,
   CalendarDays,
-  FileText,
-  Bot,
+  Feather,
   ClipboardList,
-  Database,
-  Zap,
-  Link as LinkIcon,
   Settings,
+  Link2,
   Activity,
+  Brain,
   ChevronRight,
 } from 'lucide-react'
 
-const navItems = [
+const mainNavItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Founder Cockpit', href: '/founder-cockpit', icon: Briefcase },
-  { label: 'Founder Blueprint', href: '/founder-blueprint', icon: Map },
-  { label: 'Goals', href: '/goals', icon: Target },
-  { label: 'KPIs', href: '/kpis', icon: BarChart3 },
-  { label: 'Strategy', href: '/strategy', icon: Brain },
-  { label: 'Bottlenecks', href: '/bottlenecks', icon: AlertTriangle },
-  { label: 'Opportunities', href: '/opportunities', icon: Rocket },
-  { label: 'Daily Planner', href: '/daily-planner', icon: CheckSquare },
-  { label: 'Calendar', href: '/calendar', icon: CalendarDays },
-  { label: 'Content Hub', href: '/content-hub', icon: FileText },
-  { label: 'Agents', href: '/agents', icon: Bot },
+  { label: 'Ask Frank', href: '/ask-frank', icon: MessageSquare, gold: true },
+  { label: 'Unternehmen', href: '/unternehmen', icon: TrendingUp },
+  { label: 'Ziele', href: '/ziele', icon: Target },
+  { label: 'Planung', href: '/planung', icon: CalendarDays },
+  { label: 'Content', href: '/content', icon: Feather },
   { label: 'Reviews', href: '/reviews', icon: ClipboardList },
-  { label: 'Memory', href: '/memory', icon: Database },
-  { label: 'Automations', href: '/automations', icon: Zap },
-  { label: 'Integrations', href: '/integrations', icon: LinkIcon },
-  { label: 'Settings', href: '/settings', icon: Settings },
+]
+
+const secondaryNavItems = [
+  { label: 'Einstellungen', href: '/settings', icon: Settings },
+  { label: 'Integrationen', href: '/integrations', icon: Link2, muted: true },
 ]
 
 export default function Sidebar() {
@@ -77,7 +65,7 @@ export default function Sidebar() {
             style={{ background: 'linear-gradient(135deg, #f59e0b20, #f59e0b40)', border: '1px solid #f59e0b30' }}
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
           >
-            <Bot size={16} style={{ color: '#f59e0b' }} />
+            <Brain size={16} style={{ color: '#f59e0b' }} />
           </div>
           <div>
             <div style={{ color: '#f59e0b' }} className="text-xs font-semibold">FRANK AI</div>
@@ -90,10 +78,41 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2">
-        {navItems.map((item) => {
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {/* Main nav items */}
+        {mainNavItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const isGold = item.gold
+
+          if (isGold) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  backgroundColor: isActive ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.08)',
+                  color: '#f59e0b',
+                  borderRadius: '0.5rem',
+                  border: `1px solid ${isActive ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.2)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 12px',
+                  marginBottom: '6px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <Icon size={14} className="flex-shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {isActive && <ChevronRight size={10} style={{ color: '#f59e0b' }} />}
+              </Link>
+            )
+          }
+
           return (
             <Link
               key={item.href}
@@ -107,6 +126,35 @@ export default function Sidebar() {
               className="flex items-center gap-2.5 px-3 py-2 mb-0.5 text-xs font-medium transition-all hover:bg-white/5 hover:text-white group"
             >
               <Icon size={14} className="flex-shrink-0" />
+              <span className="flex-1">{item.label}</span>
+              {isActive && <ChevronRight size={10} style={{ color: '#f59e0b' }} />}
+            </Link>
+          )
+        })}
+
+        {/* Divider */}
+        <div style={{ borderTop: '1px solid #1e2130', margin: '10px 4px' }} />
+
+        {/* Secondary nav items */}
+        {secondaryNavItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const isMuted = item.muted
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                backgroundColor: isActive ? 'rgba(245,158,11,0.1)' : 'transparent',
+                color: isActive ? '#f59e0b' : isMuted ? '#475569' : '#94a3b8',
+                borderRadius: '0.5rem',
+                borderLeft: isActive ? '2px solid #f59e0b' : '2px solid transparent',
+                fontSize: isMuted ? '11px' : '12px',
+              }}
+              className="flex items-center gap-2.5 px-3 py-1.5 mb-0.5 font-medium transition-all hover:bg-white/5 hover:text-white group"
+            >
+              <Icon size={isMuted ? 12 : 14} className="flex-shrink-0" />
               <span className="flex-1">{item.label}</span>
               {isActive && <ChevronRight size={10} style={{ color: '#f59e0b' }} />}
             </Link>
