@@ -7,9 +7,9 @@ function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'placeholder' })
 }
 
-function getSizeForFormat(format: ImageFormat): '1024x1024' | '1024x1792' {
+function getSizeForFormat(format: ImageFormat): '1024x1024' | '1024x1536' | '1536x1024' {
   if (format === 'instagram_story') {
-    return '1024x1792'
+    return '1024x1536'
   }
   return '1024x1024'
 }
@@ -109,39 +109,62 @@ export async function POST(req: NextRequest) {
 
     const size = getSizeForFormat(format)
 
-    let imageData
+    let imageUrl: string | null = null
+    let revisedPrompt = finalPrompt
+
+    // Try gpt-image-1 first (newest OpenAI image model)
     try {
       const response = await openai.images.generate({
-        model: 'dall-e-3',
+        model: 'gpt-image-1',
         prompt: finalPrompt,
         n: 1,
         size,
       })
-      imageData = response.data?.[0]
+      const item = response.data?.[0]
+      if (item) {
+        // gpt-image-1 returns b64_json by default
+        if ('b64_json' in item && item.b64_json) {
+          imageUrl = `data:image/png;base64,${item.b64_json}`
+        } else if (item.url) {
+          imageUrl = item.url
+        }
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
-      if (msg.includes('does not exist') || msg.includes('model')) {
-        // Fallback to dall-e-2 (supports only 1024x1024)
-        const response = await openai.images.generate({
-          model: 'dall-e-2',
-          prompt: finalPrompt.slice(0, 1000),
-          n: 1,
-          size: '1024x1024',
-        })
-        imageData = response.data?.[0]
+      // Fall back to dall-e-3
+      if (msg.includes('does not exist') || msg.includes('model') || msg.includes('not found')) {
+        try {
+          const response = await openai.images.generate({
+            model: 'dall-e-3',
+            prompt: finalPrompt,
+            n: 1,
+            size,
+          })
+          const item = response.data?.[0]
+          if (item?.url) {
+            imageUrl = item.url
+            revisedPrompt = (item as { revised_prompt?: string }).revised_prompt || finalPrompt
+          }
+        } catch {
+          // Fall back to dall-e-2 (supports only 1024x1024)
+          const response = await openai.images.generate({
+            model: 'dall-e-2',
+            prompt: finalPrompt.slice(0, 1000),
+            n: 1,
+            size: '1024x1024',
+          })
+          imageUrl = response.data?.[0]?.url ?? null
+        }
       } else {
         throw e
       }
     }
 
-    if (!imageData?.url) {
+    if (!imageUrl) {
       return NextResponse.json({ error: 'Keine Bild-URL in der Antwort' }, { status: 500 })
     }
 
-    return NextResponse.json({
-      url: imageData.url,
-      revisedPrompt: (imageData as { revised_prompt?: string }).revised_prompt || finalPrompt,
-    })
+    return NextResponse.json({ url: imageUrl, revisedPrompt })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
     console.error('Image generation error:', err)
