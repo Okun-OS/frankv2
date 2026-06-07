@@ -272,6 +272,31 @@ model WebhookEvent {
   createdAt   DateTime @default(now())
 }
 
+model Availability {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  hours       Float
+  timeSlots   String?  @db.Text  // JSON: [{start: "09:00", end: "12:00"}, ...]
+  note        String?
+  focusType   String   @default("balanced") // deep_work, sales, content, balanced
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LearningProposal {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @db.Text
+  category    String    // strategy, outreach, content, process, target_group
+  evidence    String?   @db.Text  // why Frank thinks this is a pattern
+  impact      String    @default("medium")
+  status      String    @default("pending") // pending, confirmed, rejected
+  confirmedAt DateTime?
+  rejectedAt  DateTime?
+  source      String    @default("frank") // frank, weekly_review, manual
+  createdAt   DateTime  @default(now())
+}
+
 model SocialMetric {
   id          String   @id @default(cuid())
   platform    String   // instagram, linkedin

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import prisma from '@/lib/prisma'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -8,24 +9,30 @@ const client = new Anthropic({
 const FRANK_SYSTEM_PROMPT = `Du bist FRANK — der digitale COO und strategische Berater von Felix Okun, Founder & CEO von OKUN Systems.
 
 ÜBER OKUN SYSTEMS:
-- AI-Automatisierungslösungen für DACH-KMUs
-- 7 Personen Team, Pre-Series A
-- €38K MRR, 234 aktive Kunden
-- Fokus: Enterprise-Segment, PLG-Wachstum
+OKUN Systems entwickelt individuelle Unternehmenssysteme zur Prozessoptimierung und Automatisierung für KMUs.
+Positionierung: Nicht klassische IT-Beratung, sondern geschäftsorientierte Systementwicklung.
+Zielkunden: Hausverwaltungen, Personaldienstleister, Pflegedienste, Versicherungsvermittler, Agenturen und weitere KMUs.
+Angebote: Kleines Paket (~7.500 EUR), Großes Paket (~15.000 EUR), Retainer, OKUN Blueprint.
+Kernmethodik: OKUN Blueprint als Unternehmensanalyse.
+Systeme: DealSky (LinkedIn-Outreach), E-Mail-Outreach, Cloud Code (OKUN Blueprint Platform).
+Langfristige Ziele: BAFA-Beraterstatus, Medienautorität, DCF-Verlag, Produktisierung von Frank OS.
 
-DEINE ROLLE:
-- Strategischer Berater mit Fokus auf Wachstum & Skalierung
-- Analysierst KPIs, identifizierst Bottlenecks und Opportunities
-- Gibst direkte, actionable Empfehlungen
-- Kommunizierst auf Deutsch, klar und präzise
+DEINE KERNAUFGABE:
+Du bist kein Assistent, du bist ein digitaler COO. Du denkst zielorientiert, nicht aufgabenorientiert.
+Du priorisierst nach Unternehmenswirkung. Du erkennst Engpässe, bildest Hypothesen, planst konkrete Arbeit.
+Du handelst nicht eigenmächtig — du legst Vorschläge zur Freigabe vor.
 
-DEIN STIL:
-- Direkt und professionell
-- Datengetrieben, aber auch intuitiv
-- Fokussiert auf das Wesentliche
-- Nicht zu formal, aber respektvoll
+ENTSCHEIDUNGSLOGIK:
+Vision → Jahresziel → Quartalsziel → Monatsziel → Wochenziel → heutiger Engpass → konkrete Aufgabe
 
-Antworte immer auf Deutsch. Sei konkret und actionable.`
+WENN FELIX NACH TAGESPLAN FRAGT:
+Erstelle einen strukturierten Zeitplan mit Begründung:
+- Zeitblock | Aufgabe | Warum diese Aufgabe? | Welches Ziel wird unterstützt?
+
+WENN ZIELE GEFÄHRDET SIND: Sage es direkt, nenn den Engpass, schlage 2-3 konkrete Maßnahmen vor.
+WENN DATEN FEHLEN: Frage gezielt nach oder markiere die Datenlücke.
+
+Kommuniziere auf Deutsch. Sei direkt, sachlich, wie ein erfahrener COO — kein Motivationscoach.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,9 +45,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch live data from the database
+    const [kpis, goals, bottlenecks, opportunities, alerts] = await Promise.all([
+      prisma.kPI.findMany({ where: { isActive: true }, take: 10 }),
+      prisma.goal.findMany({ where: { status: 'active' }, take: 5 }),
+      prisma.bottleneck.findMany({ where: { status: { not: 'resolved' } }, take: 3, orderBy: { createdAt: 'desc' } }),
+      prisma.opportunity.findMany({ where: { status: 'identified' }, take: 3 }),
+      prisma.alert.findMany({ where: { isRead: false }, take: 5, orderBy: { createdAt: 'desc' } }),
+    ])
+
+    const liveContext = `
+LIVE UNTERNEHMENSDATEN (${new Date().toLocaleDateString('de-DE')}):
+
+KPIs:
+${kpis.length > 0 ? kpis.map(k => `- ${k.name}: ${k.current} ${k.unit} (Ziel: ${k.target} ${k.unit}, Trend: ${k.trend})`).join('\n') : '- Keine aktiven KPIs verfügbar'}
+
+Aktive Ziele:
+${goals.length > 0 ? goals.map(g => `- ${g.title}: ${g.progress}% (Status: ${g.status})`).join('\n') : '- Keine aktiven Ziele verfügbar'}
+
+Aktuelle Engpässe:
+${bottlenecks.length > 0 ? bottlenecks.map(b => `- ${b.title} (Impact: ${b.impact})`).join('\n') : '- Keine offenen Engpässe'}
+
+Aktuelle Chancen:
+${opportunities.length > 0 ? opportunities.map(o => `- ${o.title} (Potenzial: ${o.potential})`).join('\n') : '- Keine identifizierten Chancen'}
+
+Ungelesene Alerts:
+${alerts.length > 0 ? alerts.map(a => `- [${a.severity.toUpperCase()}] ${a.title}`).join('\n') : '- Keine ungelesenen Alerts'}
+`
+
     const systemPrompt = context
-      ? `${FRANK_SYSTEM_PROMPT}\n\nAKTUELLER KONTEXT:\n${JSON.stringify(context, null, 2)}`
-      : FRANK_SYSTEM_PROMPT
+      ? `${FRANK_SYSTEM_PROMPT}\n\n${liveContext}\n\nZUSÄTZLICHER KONTEXT:\n${JSON.stringify(context, null, 2)}`
+      : `${FRANK_SYSTEM_PROMPT}\n\n${liveContext}`
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',

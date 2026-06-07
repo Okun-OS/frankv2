@@ -3,7 +3,7 @@
 import Header from '@/components/layout/Header'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Brain, Plus, FlaskConical, Lightbulb, BarChart2, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Brain, Plus, FlaskConical, Lightbulb, BarChart2, CheckCircle, XCircle, Clock, Shield, AlertTriangle, ChevronRight } from 'lucide-react'
 
 const strategies = [
   {
@@ -112,6 +112,127 @@ export default function StrategyPage() {
             <Plus size={12} />
             Neue Strategie
           </Button>
+        </div>
+
+        {/* BAFA Strategic Project */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(217,119,6,0.04) 100%)',
+            border: '2px solid rgba(245,158,11,0.4)',
+            borderRadius: '12px',
+            padding: '16px',
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <div
+              style={{
+                backgroundColor: 'rgba(245,158,11,0.15)',
+                border: '1px solid rgba(245,158,11,0.3)',
+                borderRadius: '8px',
+                padding: '10px',
+                flexShrink: 0,
+              }}
+            >
+              <Shield size={20} style={{ color: '#f59e0b' }} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 style={{ color: '#f1f5f9', fontSize: '14px', fontWeight: 700 }}>
+                  BAFA-Beraterstatus
+                </h3>
+                <span
+                  style={{
+                    backgroundColor: 'rgba(245,158,11,0.15)',
+                    border: '1px solid rgba(245,158,11,0.3)',
+                    color: '#f59e0b',
+                    fontSize: '10px',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontWeight: 700,
+                  }}
+                >
+                  STRATEGISCHES PROJEKT
+                </span>
+                <div className="flex items-center gap-1">
+                  <Clock size={10} style={{ color: '#f97316' }} />
+                  <span style={{ color: '#f97316', fontSize: '11px', fontWeight: 500 }}>In Bearbeitung</span>
+                </div>
+              </div>
+              <p style={{ color: '#94a3b8', fontSize: '12px', lineHeight: 1.6, marginBottom: '12px' }}>
+                BAFA-Zulassung als Unternehmensberater ermöglicht es, Förderprogramme für KMU-Kunden zugänglich zu machen.
+                Positioniert OKUN Systems als offiziell anerkannten Berater mit staatlicher Legitimation.
+              </p>
+
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div
+                  style={{
+                    backgroundColor: '#111318',
+                    border: '1px solid #1e2130',
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}
+                >
+                  <p style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, marginBottom: '4px' }}>Status</p>
+                  <p style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>Antrag vorbereiten</p>
+                </div>
+                <div
+                  style={{
+                    backgroundColor: '#111318',
+                    border: '1px solid #1e2130',
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}
+                >
+                  <p style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, marginBottom: '4px' }}>Nächste Deadline</p>
+                  <p style={{ color: '#ef4444', fontSize: '12px', fontWeight: 600 }}>Q3 2026</p>
+                </div>
+                <div
+                  style={{
+                    backgroundColor: '#111318',
+                    border: '1px solid #1e2130',
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}
+                >
+                  <p style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, marginBottom: '4px' }}>Risiko</p>
+                  <p style={{ color: '#f97316', fontSize: '12px', fontWeight: 600 }}>Mittel</p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: '#111318',
+                  border: '1px solid #1e2130',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  marginBottom: '10px',
+                }}
+              >
+                <p style={{ color: '#94a3b8', fontSize: '10px', fontWeight: 600, marginBottom: '8px' }} className="uppercase tracking-wider">
+                  Offene Schritte
+                </p>
+                {[
+                  'Nachweis über Berufserfahrung (mind. 3 Jahre) zusammenstellen',
+                  'Qualifikationsnachweise & Zertifikate aufbereiten',
+                  'BAFA-Antrag ausfüllen und einreichen',
+                  'Erstes gefördertes Beratungsprojekt durchführen',
+                  'Qualitätssicherungs-Maßnahmen dokumentieren',
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-2 mb-1.5">
+                    <ChevronRight size={10} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                    <p style={{ color: '#64748b', fontSize: '11px' }}>{step}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={12} style={{ color: '#f59e0b' }} />
+                <p style={{ color: '#94a3b8', fontSize: '11px' }}>
+                  <span style={{ color: '#f59e0b', fontWeight: 600 }}>Risiko:</span> Verzögerung gefährdet Ziel für BAFA-Beraterstatus in 2026. Priorisierung empfohlen.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3">

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Briefcase,
+  Map,
   Target,
   BarChart3,
   Brain,
@@ -26,6 +27,7 @@ import {
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Founder Cockpit', href: '/founder-cockpit', icon: Briefcase },
+  { label: 'Founder Blueprint', href: '/founder-blueprint', icon: Map },
   { label: 'Goals', href: '/goals', icon: Target },
   { label: 'KPIs', href: '/kpis', icon: BarChart3 },
   { label: 'Strategy', href: '/strategy', icon: Brain },
