@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Header from '@/components/layout/Header'
 import {
   CheckCircle,
@@ -63,6 +63,15 @@ interface StatusData {
   }>
 }
 
+interface LinkedInPost {
+  id: string
+  platform: string
+  type: string
+  content: string | null
+  publishedAt: string | null
+  createdAt: string
+}
+
 const categoryColors: Record<string, string> = {
   lead: '#f59e0b',
   customer: '#22c55e',
@@ -103,12 +112,12 @@ export default function IntegrationsPage() {
   const [copied, setCopied] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'emails' | 'deals' | 'social'>('emails')
   const [syncResult, setSyncResult] = useState<string | null>(null)
+  const [linkedInSyncing, setLinkedInSyncing] = useState(false)
+  const [linkedInResult, setLinkedInResult] = useState<string | null>(null)
+  const [linkedInPosts, setLinkedInPosts] = useState<LinkedInPost[]>([])
+  const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  useEffect(() => {
-    fetchStatus()
-  }, [])
-
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/integrations/status')
       const data = await res.json()
@@ -117,6 +126,61 @@ export default function IntegrationsPage() {
       console.error('Failed to fetch status', err)
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const fetchLinkedInPosts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sync/linkedin')
+      const data = await res.json()
+      if (data.posts) {
+        setLinkedInPosts(data.posts)
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStatus()
+    fetchLinkedInPosts()
+
+    // Handle URL params for OAuth redirect
+    const params = new URLSearchParams(window.location.search)
+    const success = params.get('success')
+    const error = params.get('error')
+    if (success === 'linkedin') {
+      setBanner({ type: 'success', message: 'LinkedIn erfolgreich verbunden!' })
+      window.history.replaceState({}, '', '/integrations')
+    } else if (error === 'linkedin_denied') {
+      setBanner({ type: 'error', message: 'LinkedIn-Verbindung abgebrochen.' })
+      window.history.replaceState({}, '', '/integrations')
+    } else if (error === 'linkedin_failed') {
+      setBanner({ type: 'error', message: 'LinkedIn-Verbindung fehlgeschlagen. Bitte erneut versuchen.' })
+      window.history.replaceState({}, '', '/integrations')
+    }
+
+    const timer = setTimeout(() => setBanner(null), 5000)
+    return () => clearTimeout(timer)
+  }, [fetchStatus, fetchLinkedInPosts])
+
+  async function syncLinkedIn() {
+    setLinkedInSyncing(true)
+    setLinkedInResult(null)
+    try {
+      const res = await fetch('/api/sync/linkedin', { method: 'POST' })
+      const data = await res.json()
+      if (data.error) {
+        setLinkedInResult(`Fehler: ${data.error}`)
+      } else {
+        setLinkedInResult(`${data.postssynced ?? 0} neue Posts synchronisiert`)
+        await fetchLinkedInPosts()
+        await fetchStatus()
+      }
+    } catch {
+      setLinkedInResult('Verbindungsfehler')
+    } finally {
+      setLinkedInSyncing(false)
     }
   }
 
@@ -158,6 +222,10 @@ export default function IntegrationsPage() {
   const gmailToken = status?.tokens?.find((t) => t.provider === 'google')
   const gmailIntegration = status?.integrations?.find((i) => i.type === 'gmail')
   const isGmailConnected = !!gmailToken && gmailIntegration?.status === 'connected'
+
+  const linkedInToken = status?.tokens?.find((t) => t.provider === 'linkedin')
+  const linkedInIntegration = status?.integrations?.find((i) => i.type === 'linkedin')
+  const isLinkedInConnected = !!linkedInToken && linkedInIntegration?.status === 'connected'
 
   async function syncGmail() {
     setSyncing(true)
@@ -204,6 +272,27 @@ export default function IntegrationsPage() {
         subtitle="Verbinde FRANK OS mit Gmail, Dealsky, Instagram & LinkedIn"
       />
       <div className="p-6 space-y-6">
+
+        {/* Banner for OAuth redirects */}
+        {banner && (
+          <div
+            style={{
+              backgroundColor: banner.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              border: `1px solid ${banner.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+              color: banner.type === 'success' ? '#22c55e' : '#ef4444',
+              fontSize: '13px',
+              padding: '12px 16px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontWeight: 600,
+            }}
+          >
+            {banner.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+            {banner.message}
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-4 gap-3">
@@ -506,6 +595,264 @@ export default function IntegrationsPage() {
                   <code style={{ color: '#94a3b8' }}>GOOGLE_CLIENT_SECRET</code> und{' '}
                   <code style={{ color: '#94a3b8' }}>GOOGLE_REDIRECT_URI</code> in deinen
                   Environment Variables, dann klicke auf "Mit Google verbinden".
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* LinkedIn OAuth Card */}
+        <div
+          className="card p-5"
+          style={{ borderColor: isLinkedInConnected ? 'rgba(0,119,181,0.25)' : '#1e2130' }}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div
+                style={{
+                  backgroundColor: 'rgba(0,119,181,0.1)',
+                  border: '1px solid rgba(0,119,181,0.2)',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  fontSize: '24px',
+                  lineHeight: 1,
+                }}
+              >
+                🔗
+              </div>
+              <div>
+                <h2 style={{ color: '#f1f5f9', fontSize: '16px', fontWeight: 700 }}>LinkedIn</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {isLinkedInConnected ? (
+                    <>
+                      <CheckCircle size={12} style={{ color: '#22c55e' }} />
+                      <span style={{ color: '#22c55e', fontSize: '11px', fontWeight: 500 }}>
+                        Verbunden
+                      </span>
+                      {linkedInToken?.email && (
+                        <span style={{ color: '#475569', fontSize: '11px' }}>
+                          · {linkedInToken.email}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={12} style={{ color: '#64748b' }} />
+                      <span style={{ color: '#64748b', fontSize: '11px', fontWeight: 500 }}>
+                        Nicht verbunden
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isLinkedInConnected && (
+                <button
+                  onClick={syncLinkedIn}
+                  disabled={linkedInSyncing}
+                  style={{
+                    backgroundColor: 'rgba(0,119,181,0.1)',
+                    color: '#0077b5',
+                    border: '1px solid rgba(0,119,181,0.2)',
+                    fontSize: '11px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    cursor: linkedInSyncing ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    opacity: linkedInSyncing ? 0.6 : 1,
+                  }}
+                >
+                  <RefreshCw size={11} className={linkedInSyncing ? 'animate-spin' : ''} />
+                  {linkedInSyncing ? 'Syncing...' : 'Synchronisieren'}
+                </button>
+              )}
+              <a
+                href="/api/auth/linkedin"
+                style={{
+                  background: isLinkedInConnected
+                    ? 'rgba(100,116,139,0.1)'
+                    : 'linear-gradient(135deg, #0077b5, #005983)',
+                  color: isLinkedInConnected ? '#64748b' : '#fff',
+                  border: isLinkedInConnected ? '1px solid rgba(100,116,139,0.2)' : 'none',
+                  fontSize: '11px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {isLinkedInConnected ? 'Neu verbinden' : 'Mit LinkedIn verbinden'}
+              </a>
+            </div>
+          </div>
+
+          {/* LinkedIn sync result */}
+          {linkedInResult && (
+            <div
+              style={{
+                backgroundColor: linkedInResult.startsWith('Fehler')
+                  ? 'rgba(239,68,68,0.1)'
+                  : 'rgba(34,197,94,0.1)',
+                border: `1px solid ${linkedInResult.startsWith('Fehler') ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`,
+                color: linkedInResult.startsWith('Fehler') ? '#ef4444' : '#22c55e',
+                fontSize: '12px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {linkedInResult.startsWith('Fehler') ? (
+                <AlertCircle size={12} />
+              ) : (
+                <CheckCircle size={12} />
+              )}
+              {linkedInResult}
+            </div>
+          )}
+
+          {/* LinkedIn info rows */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '12px',
+              marginBottom: linkedInPosts.length > 0 || !isLinkedInConnected ? '16px' : '0',
+            }}
+          >
+            {[
+              {
+                label: 'Letzter Sync',
+                value: formatTime(linkedInIntegration?.lastSync || null),
+              },
+              {
+                label: 'Token gültig bis',
+                value: linkedInToken?.expiresAt ? formatTime(linkedInToken.expiresAt) : '—',
+              },
+              {
+                label: 'Gespeicherte Posts',
+                value: String(linkedInPosts.length),
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  backgroundColor: '#0d0e13',
+                  border: '1px solid #1e2130',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                }}
+              >
+                <p style={{ color: '#475569', fontSize: '10px', fontWeight: 500 }}>{item.label}</p>
+                <p style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>
+                  {loading ? '...' : item.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent LinkedIn posts */}
+          {linkedInPosts.length > 0 && (
+            <div>
+              <p
+                style={{ color: '#475569', fontSize: '10px', fontWeight: 600, marginBottom: '8px' }}
+                className="uppercase tracking-widest"
+              >
+                Letzte Posts
+              </p>
+              <div className="space-y-2">
+                {linkedInPosts.slice(0, 5).map((post) => (
+                  <div
+                    key={post.id}
+                    style={{
+                      backgroundColor: '#0d0e13',
+                      border: '1px solid #1e2130',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: '#0077b5',
+                        marginTop: '5px',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span
+                          style={{
+                            backgroundColor: 'rgba(0,119,181,0.1)',
+                            color: '#0077b5',
+                            border: '1px solid rgba(0,119,181,0.2)',
+                            fontSize: '9px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {post.type}
+                        </span>
+                        <span
+                          style={{ color: '#475569', fontSize: '10px', marginLeft: 'auto', flexShrink: 0 }}
+                        >
+                          {formatTime(post.publishedAt || post.createdAt)}
+                        </span>
+                      </div>
+                      {post.content && (
+                        <p style={{ color: '#94a3b8', fontSize: '11px' }} className="truncate">
+                          {post.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Setup hint when not connected */}
+          {!isLinkedInConnected && (
+            <div
+              style={{
+                backgroundColor: 'rgba(0,119,181,0.05)',
+                border: '1px solid rgba(0,119,181,0.15)',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                gap: '10px',
+              }}
+            >
+              <AlertCircle size={14} style={{ color: '#0077b5', flexShrink: 0, marginTop: '1px' }} />
+              <div>
+                <p style={{ color: '#0077b5', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                  Setup erforderlich
+                </p>
+                <p style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5 }}>
+                  Setze{' '}
+                  <code style={{ color: '#94a3b8' }}>LINKEDIN_CLIENT_ID</code>,{' '}
+                  <code style={{ color: '#94a3b8' }}>LINKEDIN_CLIENT_SECRET</code> und{' '}
+                  <code style={{ color: '#94a3b8' }}>LINKEDIN_REDIRECT_URI</code> in deinen
+                  Environment Variables, dann klicke auf "Mit LinkedIn verbinden".
+                  Verbindet Profil, Posts und Social-Metriken.
                 </p>
               </div>
             </div>
@@ -930,7 +1277,7 @@ export default function IntegrationsPage() {
               Environment Variables
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               {
                 group: 'Google OAuth (Gmail)',
@@ -939,6 +1286,15 @@ export default function IntegrationsPage() {
                   { name: 'GOOGLE_CLIENT_ID', desc: 'OAuth Client ID aus Google Console' },
                   { name: 'GOOGLE_CLIENT_SECRET', desc: 'OAuth Client Secret' },
                   { name: 'GOOGLE_REDIRECT_URI', desc: 'z.B. https://deine-app.railway.app/api/auth/google/callback' },
+                ],
+              },
+              {
+                group: 'LinkedIn OAuth',
+                color: '#0077b5',
+                vars: [
+                  { name: 'LINKEDIN_CLIENT_ID', desc: 'Client ID aus LinkedIn Developer App' },
+                  { name: 'LINKEDIN_CLIENT_SECRET', desc: 'Client Secret aus LinkedIn Developer App' },
+                  { name: 'LINKEDIN_REDIRECT_URI', desc: 'z.B. https://deine-app.railway.app/api/auth/linkedin/callback' },
                 ],
               },
               {
