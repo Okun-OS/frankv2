@@ -171,6 +171,7 @@ model ContentItem {
   publishedAt DateTime?
   tags        String?
   metrics     String?
+  metadata    String?   @db.Text
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -251,7 +252,7 @@ model ChatMessage {
 
 model OAuthToken {
   id           String    @id @default(cuid())
-  provider     String    // google, instagram, linkedin
+  provider     String
   accessToken  String    @db.Text
   refreshToken String?   @db.Text
   expiresAt    DateTime?
@@ -271,9 +272,9 @@ model IncomingEmail {
   snippet     String?
   body        String   @db.Text
   receivedAt  DateTime
-  category    String   @default("uncategorized") // lead, customer, review, support, spam, newsletter
-  priority    String   @default("normal")         // high, normal, low
-  sentiment   String?                              // positive, neutral, negative
+  category    String   @default("uncategorized")
+  priority    String   @default("normal")
+  sentiment   String?
   isRead      Boolean  @default(false)
   isProcessed Boolean  @default(false)
   aiSummary   String?  @db.Text
@@ -283,7 +284,7 @@ model IncomingEmail {
 
 model WebhookEvent {
   id          String   @id @default(cuid())
-  source      String   // dealsky, instagram, linkedin, stripe, custom
+  source      String
   eventType   String
   payload     String   @db.Text
   processed   Boolean  @default(false)
@@ -295,9 +296,9 @@ model Availability {
   id          String   @id @default(cuid())
   date        DateTime @unique
   hours       Float
-  timeSlots   String?  @db.Text  // JSON: [{start: "09:00", end: "12:00"}, ...]
+  timeSlots   String?  @db.Text
   note        String?
-  focusType   String   @default("balanced") // deep_work, sales, content, balanced
+  focusType   String   @default("balanced")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -306,21 +307,21 @@ model LearningProposal {
   id          String    @id @default(cuid())
   title       String
   description String    @db.Text
-  category    String    // strategy, outreach, content, process, target_group
-  evidence    String?   @db.Text  // why Frank thinks this is a pattern
+  category    String
+  evidence    String?   @db.Text
   impact      String    @default("medium")
-  status      String    @default("pending") // pending, confirmed, rejected
+  status      String    @default("pending")
   confirmedAt DateTime?
   rejectedAt  DateTime?
-  source      String    @default("frank") // frank, weekly_review, manual
+  source      String    @default("frank")
   createdAt   DateTime  @default(now())
 }
 
 model SocialMetric {
   id          String   @id @default(cuid())
-  platform    String   // instagram, linkedin
+  platform    String
   postId      String?
-  type        String   // post, story, comment, follower_update, message
+  type        String
   content     String?  @db.Text
   likes       Int      @default(0)
   comments    Int      @default(0)
@@ -343,7 +344,7 @@ model DealEvent {
   currency     String   @default("EUR")
   contactName  String?
   contactEmail String?
-  eventType    String   // deal_created, stage_changed, deal_won, deal_lost, note_added
+  eventType    String
   note         String?  @db.Text
   metadata     String?  @db.Text
   createdAt    DateTime @default(now())

@@ -1,197 +1,272 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Brain, AlertTriangle, Rocket, Target, TrendingUp, ArrowRight, RefreshCw } from 'lucide-react'
+import {
+  Brain, AlertTriangle, Rocket, Target, TrendingUp, ArrowRight,
+  RefreshCw, Shield, CalendarDays, Loader2, ChevronRight,
+} from 'lucide-react'
+
+interface Briefing {
+  mainGoal: { title: string; description: string }
+  bottleneck: { title: string; impact: string; action: string }
+  opportunity: { title: string; potential: string }
+  risks: string[]
+  priorities: string[]
+  dayPlan: { time: string; activity: string; category: string }[]
+  kpis: { name: string; current: string; target: string; trend: string; ok: boolean }[]
+  coo_message: string
+  todayTaskCount: number
+}
+
+const categoryColors: Record<string, string> = {
+  outreach: '#22c55e',
+  sales: '#22c55e',
+  focus: '#8b5cf6',
+  content: '#f97316',
+  admin: '#64748b',
+  call: '#f59e0b',
+  meeting: '#3b82f6',
+  review: '#ef4444',
+}
 
 export default function Dashboard() {
-  const [data, setData] = useState<any>(null)
-  const [frankBrief, setFrankBrief] = useState<string>('')
-  const [loadingBrief, setLoadingBrief] = useState(true)
+  const [briefing, setBriefing] = useState<Briefing | null>(null)
+  const [loading, setLoading] = useState(true)
   const [time, setTime] = useState(new Date())
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    fetch('/api/dashboard').then(r => r.json()).then(setData)
-    generateFrankBrief()
+    loadBriefing()
     const timer = setInterval(() => setTime(new Date()), 60000)
     return () => clearInterval(timer)
   }, [])
 
-  async function generateFrankBrief() {
-    setLoadingBrief(true)
+  async function loadBriefing() {
+    setLoading(true)
+    setError(false)
     try {
-      const res = await fetch('/api/frank', {
+      const res = await fetch('/api/frank/briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            role: 'user',
-            content: 'Erstelle ein tägliches Briefing für Felix. Analysiere den Unternehmenszustand und nenne: 1) Größtes Nadelöhr heute, 2) Größte Chance, 3) Wichtigstes Ziel, 4) Empfohlene Priorität heute. Max 4 kurze Sätze, direkt und sachlich wie ein COO.'
-          }]
-        })
+        body: JSON.stringify({}),
       })
-      const d = await res.json()
-      setFrankBrief(d.message || '')
+      if (!res.ok) throw new Error()
+      setBriefing(await res.json())
     } catch {
-      setFrankBrief('Frank konnte keine Analyse laden. Bitte versuche es erneut.')
+      setError(true)
+    } finally {
+      setLoading(false)
     }
-    setLoadingBrief(false)
   }
 
   const hour = time.getHours()
   const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend'
+  const dateStr = time.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <div className="min-h-screen" style={{ background: '#0a0b0f' }}>
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto space-y-5">
 
-        {/* Header greeting */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold" style={{ color: '#f1f5f9' }}>
-                {greeting}, Felix 👋
-              </h1>
-              <p style={{ color: '#64748b' }} className="mt-1">
-                {time.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            </div>
-            <button
-              onClick={generateFrankBrief}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
-              style={{ background: '#111318', border: '1px solid #1e2130', color: '#94a3b8' }}
-            >
-              <RefreshCw size={14} />
-              Analyse aktualisieren
-            </button>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: '#f1f5f9' }}>{greeting} 👋</h1>
+            <p style={{ color: '#64748b', fontSize: '13px' }}>{dateStr}</p>
           </div>
+          <button
+            onClick={loadBriefing}
+            disabled={loading}
+            style={{ background: '#111318', border: '1px solid #1e2130', color: '#94a3b8', borderRadius: '10px', padding: '8px 14px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            Analyse aktualisieren
+          </button>
         </div>
 
-        {/* Frank's Brief — THE MAIN ELEMENT */}
-        <div className="mb-8 p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, #111318 0%, #161921 100%)', border: '1px solid #f59e0b33' }}>
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#f59e0b20', border: '2px solid #f59e0b40' }}>
-              <Brain size={20} style={{ color: '#f59e0b' }} />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="font-bold text-lg" style={{ color: '#f59e0b' }}>FRANK</span>
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b30' }}>Tagesanalyse</span>
+        {/* Loading */}
+        {loading && (
+          <div style={{ background: '#111318', border: '1px solid #f59e0b30', borderRadius: '16px', padding: '32px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f59e0b20', border: '2px solid #f59e0b40', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Brain size={18} style={{ color: '#f59e0b' }} />
               </div>
-              {loadingBrief ? (
-                <div className="flex items-center gap-3" style={{ color: '#64748b' }}>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#f59e0b', animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#f59e0b', animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#f59e0b', animationDelay: '300ms' }} />
-                  </div>
-                  <span className="text-sm">Frank analysiert dein Unternehmen...</span>
-                </div>
-              ) : (
-                <p className="leading-relaxed" style={{ color: '#e2e8f0' }}>{frankBrief}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 4 key insights grid */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          {/* Bottleneck */}
-          <div className="p-5 rounded-xl" style={{ background: '#111318', border: '1px solid #ef444425' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={16} style={{ color: '#ef4444' }} />
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#ef4444' }}>Größtes Nadelöhr</span>
-            </div>
-            <p className="font-semibold" style={{ color: '#f1f5f9' }}>
-              {data?.bottlenecks?.[0]?.title || 'Wird analysiert...'}
-            </p>
-            {data?.bottlenecks?.[0]?.impact && (
-              <span className="text-xs mt-2 inline-block px-2 py-0.5 rounded-full" style={{ background: '#ef444415', color: '#ef4444' }}>
-                Impact: {data.bottlenecks[0].impact}
-              </span>
-            )}
-          </div>
-
-          {/* Opportunity */}
-          <div className="p-5 rounded-xl" style={{ background: '#111318', border: '1px solid #22c55e25' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Rocket size={16} style={{ color: '#22c55e' }} />
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#22c55e' }}>Größte Chance</span>
-            </div>
-            <p className="font-semibold" style={{ color: '#f1f5f9' }}>
-              {data?.opportunities?.[0]?.title || 'Wird analysiert...'}
-            </p>
-            {data?.opportunities?.[0]?.potential && (
-              <span className="text-xs mt-2 inline-block px-2 py-0.5 rounded-full" style={{ background: '#22c55e15', color: '#22c55e' }}>
-                Potenzial: {data.opportunities[0].potential}
-              </span>
-            )}
-          </div>
-
-          {/* Main Goal */}
-          <div className="p-5 rounded-xl" style={{ background: '#111318', border: '1px solid #f59e0b25' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Target size={16} style={{ color: '#f59e0b' }} />
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#f59e0b' }}>Wichtigstes Ziel</span>
-            </div>
-            <p className="font-semibold" style={{ color: '#f1f5f9' }}>
-              {data?.goals?.[0]?.title || 'Keine aktiven Ziele'}
-            </p>
-            {data?.goals?.[0]?.progress !== undefined && (
-              <div className="mt-2">
-                <div className="flex justify-between text-xs mb-1" style={{ color: '#64748b' }}>
-                  <span>Fortschritt</span>
-                  <span>{data.goals[0].progress}%</span>
-                </div>
-                <div className="h-1.5 rounded-full" style={{ background: '#1e2130' }}>
-                  <div className="h-1.5 rounded-full" style={{ background: '#f59e0b', width: `${data.goals[0].progress}%` }} />
-                </div>
+              <div>
+                <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: '14px' }}>FRANK</p>
+                <p style={{ color: '#64748b', fontSize: '12px' }}>Analysiert dein Unternehmen...</p>
               </div>
-            )}
-          </div>
-
-          {/* KPI Snapshot */}
-          <div className="p-5 rounded-xl" style={{ background: '#111318', border: '1px solid #3b82f625' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp size={16} style={{ color: '#3b82f6' }} />
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: '#3b82f6' }}>KPI Status</span>
             </div>
-            {data?.kpis?.slice(0, 3).map((kpi: any) => (
-              <div key={kpi.id} className="flex justify-between items-center mb-2">
-                <span className="text-sm" style={{ color: '#94a3b8' }}>{kpi.name}</span>
-                <span className="text-sm font-semibold" style={{ color: kpi.trend === 'up' ? '#22c55e' : kpi.trend === 'down' ? '#ef4444' : '#f1f5f9' }}>
-                  {kpi.current} {kpi.unit}
-                </span>
-              </div>
-            )) || <p style={{ color: '#64748b' }} className="text-sm">Keine KPIs verfügbar</p>}
-          </div>
-        </div>
-
-        {/* Alerts */}
-        {data?.alerts && data.alerts.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748b' }}>Wichtige Alerts</h2>
-            <div className="space-y-2">
-              {data.alerts.slice(0, 3).map((alert: any) => (
-                <div key={alert.id} className="flex items-start gap-3 p-4 rounded-xl" style={{ background: '#111318', border: '1px solid #1e2130' }}>
-                  <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: alert.severity === 'danger' ? '#ef4444' : alert.severity === 'warning' ? '#f97316' : alert.severity === 'success' ? '#22c55e' : '#3b82f6' }} />
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: '#f1f5f9' }}>{alert.title}</p>
-                    {alert.description && <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>{alert.description}</p>}
-                  </div>
-                </div>
+            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+              {[0, 150, 300].map(d => (
+                <div key={d} style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', animation: 'pulse 1.5s infinite', animationDelay: `${d}ms` }} />
               ))}
             </div>
           </div>
         )}
 
-        {/* CTA to Ask Frank */}
-        <div className="p-6 rounded-2xl text-center" style={{ background: 'linear-gradient(135deg, #f59e0b10 0%, #f59e0b05 100%)', border: '1px solid #f59e0b30' }}>
-          <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>Was willst du heute erreichen?</p>
-          <a href="/ask-frank" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all" style={{ background: '#f59e0b', color: '#0a0b0f' }}>
-            <span>Frank fragen</span>
-            <ArrowRight size={16} />
-          </a>
-        </div>
+        {/* Error */}
+        {error && !loading && (
+          <div style={{ background: '#111318', border: '1px solid #ef444430', borderRadius: '16px', padding: '24px', textAlign: 'center' }}>
+            <p style={{ color: '#ef4444', fontSize: '14px', marginBottom: '12px' }}>Frank konnte keine Analyse laden.</p>
+            <button onClick={loadBriefing} style={{ background: '#f59e0b', color: '#0a0b0f', border: 'none', borderRadius: '8px', padding: '8px 18px', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+              Erneut versuchen
+            </button>
+          </div>
+        )}
 
+        {/* Briefing */}
+        {briefing && !loading && (
+          <>
+            {/* COO Message — Frank speaks first */}
+            <div style={{ background: 'linear-gradient(135deg, #111318 0%, #161921 100%)', border: '1px solid #f59e0b40', borderRadius: '16px', padding: '20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#f59e0b20', border: '2px solid #f59e0b40', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Brain size={20} style={{ color: '#f59e0b' }} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: '15px' }}>FRANK</span>
+                    <span style={{ background: '#f59e0b15', color: '#f59e0b', border: '1px solid #f59e0b30', fontSize: '10px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>Executive Briefing</span>
+                  </div>
+                  <p style={{ color: '#e2e8f0', fontSize: '14px', lineHeight: 1.6 }}>{briefing.coo_message}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3-column top row: Goal | Bottleneck | Opportunity */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+
+              {/* Main Goal */}
+              <div style={{ background: '#111318', border: '1px solid #f59e0b25', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <Target size={13} style={{ color: '#f59e0b' }} />
+                  <span style={{ color: '#f59e0b', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Wichtigstes Ziel heute</span>
+                </div>
+                <p style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{briefing.mainGoal.title}</p>
+                <p style={{ color: '#64748b', fontSize: '11px', lineHeight: 1.5 }}>{briefing.mainGoal.description}</p>
+              </div>
+
+              {/* Bottleneck */}
+              <div style={{ background: '#111318', border: '1px solid #ef444425', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <AlertTriangle size={13} style={{ color: '#ef4444' }} />
+                  <span style={{ color: '#ef4444', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Größtes Nadelöhr</span>
+                </div>
+                <p style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{briefing.bottleneck.title}</p>
+                <p style={{ color: '#64748b', fontSize: '11px', marginBottom: '8px' }}>Auswirkung: {briefing.bottleneck.impact}</p>
+                <div style={{ background: '#ef444410', border: '1px solid #ef444420', borderRadius: '8px', padding: '8px 10px' }}>
+                  <p style={{ color: '#ef4444', fontSize: '11px', fontWeight: 500 }}>→ {briefing.bottleneck.action}</p>
+                </div>
+              </div>
+
+              {/* Opportunity */}
+              <div style={{ background: '#111318', border: '1px solid #22c55e25', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                  <Rocket size={13} style={{ color: '#22c55e' }} />
+                  <span style={{ color: '#22c55e', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Größte Chance</span>
+                </div>
+                <p style={{ color: '#f1f5f9', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{briefing.opportunity.title}</p>
+                <p style={{ color: '#64748b', fontSize: '11px' }}>Potenzial: {briefing.opportunity.potential}</p>
+              </div>
+            </div>
+
+            {/* Bottom row: Risks + Priorities + Day Plan */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '12px' }}>
+
+              {/* Risks */}
+              <div style={{ background: '#111318', border: '1px solid #1e2130', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <Shield size={13} style={{ color: '#f97316' }} />
+                  <span style={{ color: '#f97316', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Risiken</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {briefing.risks.map((risk, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f97316', marginTop: '5px', flexShrink: 0 }} />
+                      <p style={{ color: '#94a3b8', fontSize: '11px', lineHeight: 1.5 }}>{risk}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Priorities */}
+              <div style={{ background: '#111318', border: '1px solid #1e2130', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <TrendingUp size={13} style={{ color: '#3b82f6' }} />
+                  <span style={{ color: '#3b82f6', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Prioritäten heute</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {briefing.priorities.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <span style={{ color: '#f59e0b', fontSize: '11px', fontWeight: 700, minWidth: '16px' }}>{i + 1}.</span>
+                      <p style={{ color: '#94a3b8', fontSize: '11px', lineHeight: 1.5 }}>{p}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Day Plan */}
+              <div style={{ background: '#111318', border: '1px solid #1e2130', borderRadius: '14px', padding: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <CalendarDays size={13} style={{ color: '#8b5cf6' }} />
+                  <span style={{ color: '#8b5cf6', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tagesplan</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {briefing.dayPlan.map((block, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ color: '#f59e0b', fontSize: '10px', fontWeight: 700, minWidth: '72px', flexShrink: 0 }}>{block.time}</span>
+                      <div style={{ width: '3px', height: '16px', borderRadius: '2px', background: categoryColors[block.category] || '#475569', flexShrink: 0 }} />
+                      <span style={{ color: '#94a3b8', fontSize: '11px' }}>{block.activity}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* KPI row */}
+            {briefing.kpis && briefing.kpis.length > 0 && (
+              <div style={{ background: '#111318', border: '1px solid #1e2130', borderRadius: '14px', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <TrendingUp size={13} style={{ color: '#64748b' }} />
+                  <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Unternehmensstatus</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${briefing.kpis.length}, 1fr)`, gap: '12px' }}>
+                  {briefing.kpis.map((kpi, i) => (
+                    <div key={i}>
+                      <p style={{ color: '#475569', fontSize: '10px', marginBottom: '4px' }}>{kpi.name}</p>
+                      <p style={{ color: kpi.ok ? '#22c55e' : '#f59e0b', fontSize: '18px', fontWeight: 700 }}>{kpi.current}</p>
+                      <p style={{ color: '#475569', fontSize: '10px' }}>Ziel: {kpi.target}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <a
+                href="/ask-frank"
+                style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#0a0b0f', borderRadius: '14px', padding: '16px 20px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <div>
+                  <p style={{ fontWeight: 800, fontSize: '14px' }}>Frank fragen</p>
+                  <p style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>Strategische Fragen stellen</p>
+                </div>
+                <ChevronRight size={20} />
+              </a>
+              <a
+                href="/planung"
+                style={{ background: '#111318', border: '1px solid #1e2130', color: '#f1f5f9', borderRadius: '14px', padding: '16px 20px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: '14px' }}>Tagesplan öffnen</p>
+                  <p style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                    {briefing.todayTaskCount > 0 ? `${briefing.todayTaskCount} Aufgaben geplant` : 'Noch kein Plan für heute'}
+                  </p>
+                </div>
+                <ChevronRight size={20} style={{ color: '#475569' }} />
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

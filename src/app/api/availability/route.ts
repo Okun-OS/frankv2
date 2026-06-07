@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const records = await prisma.availability.findMany({
     where,
     orderBy: { date: 'asc' },
-    take: 14,
+    take: 62,
   })
   return NextResponse.json(records)
 }
@@ -34,20 +34,37 @@ export async function POST(req: NextRequest) {
   const date = new Date(body.date)
   date.setHours(0, 0, 0, 0)
 
+  const startTime = body.startTime ?? null
+  const endTime = body.endTime ?? null
+
+  // Calculate hours from startTime/endTime if provided
+  let hours = body.hours ?? 0
+  if (startTime && endTime && !body.hours) {
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    hours = Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60)
+  }
+
   const record = await prisma.availability.upsert({
     where: { date },
     update: {
-      hours: body.hours,
+      hours,
+      startTime,
+      endTime,
+      notAvailable: body.notAvailable ?? false,
       timeSlots: body.timeSlots ? JSON.stringify(body.timeSlots) : undefined,
-      note: body.note,
+      note: body.note ?? null,
       focusType: body.focusType || 'balanced',
       updatedAt: new Date(),
     },
     create: {
       date,
-      hours: body.hours,
+      hours,
+      startTime,
+      endTime,
+      notAvailable: body.notAvailable ?? false,
       timeSlots: body.timeSlots ? JSON.stringify(body.timeSlots) : undefined,
-      note: body.note,
+      note: body.note ?? null,
       focusType: body.focusType || 'balanced',
     },
   })
