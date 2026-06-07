@@ -30,6 +30,7 @@ model FounderProfile {
   biggestGoal         String   @db.Text
   biggestChallenge    String   @db.Text
   workingHoursPerDay  Int      @default(8)
+  isActive            Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
