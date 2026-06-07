@@ -3,10 +3,7 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "node_modules/.bin/next start -p $PORT"
+preDeployCommand = "node_modules/.bin/prisma migrate deploy"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-[environments.production]
-buildCommand = "npm run build"
-startCommand = "npm run start"
