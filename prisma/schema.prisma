@@ -229,3 +229,78 @@ model ChatMessage {
   context   String?  @db.Text
   createdAt DateTime @default(now())
 }
+
+model OAuthToken {
+  id           String    @id @default(cuid())
+  provider     String    // google, instagram, linkedin
+  accessToken  String    @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
+  scope        String?
+  email        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model IncomingEmail {
+  id          String   @id @default(cuid())
+  gmailId     String   @unique
+  threadId    String?
+  from        String
+  fromName    String?
+  subject     String
+  snippet     String?
+  body        String   @db.Text
+  receivedAt  DateTime
+  category    String   @default("uncategorized") // lead, customer, review, support, spam, newsletter
+  priority    String   @default("normal")         // high, normal, low
+  sentiment   String?                              // positive, neutral, negative
+  isRead      Boolean  @default(false)
+  isProcessed Boolean  @default(false)
+  aiSummary   String?  @db.Text
+  metadata    String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  source      String   // dealsky, instagram, linkedin, stripe, custom
+  eventType   String
+  payload     String   @db.Text
+  processed   Boolean  @default(false)
+  error       String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model SocialMetric {
+  id          String   @id @default(cuid())
+  platform    String   // instagram, linkedin
+  postId      String?
+  type        String   // post, story, comment, follower_update, message
+  content     String?  @db.Text
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  reach       Int      @default(0)
+  impressions Int      @default(0)
+  engagement  Float    @default(0)
+  publishedAt DateTime?
+  metadata    String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model DealEvent {
+  id           String   @id @default(cuid())
+  source       String   @default("dealsky")
+  dealId       String?
+  dealName     String?
+  stage        String?
+  value        Float?
+  currency     String   @default("EUR")
+  contactName  String?
+  contactEmail String?
+  eventType    String   // deal_created, stage_changed, deal_won, deal_lost, note_added
+  note         String?  @db.Text
+  metadata     String?  @db.Text
+  createdAt    DateTime @default(now())
+}
