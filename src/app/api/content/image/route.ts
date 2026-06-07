@@ -109,21 +109,38 @@ export async function POST(req: NextRequest) {
 
     const size = getSizeForFormat(format)
 
-    const response = await openai.images.generate({
-      model: 'dall-e-3',
-      prompt: finalPrompt,
-      n: 1,
-      size,
-    })
+    let imageData
+    try {
+      const response = await openai.images.generate({
+        model: 'dall-e-3',
+        prompt: finalPrompt,
+        n: 1,
+        size,
+      })
+      imageData = response.data?.[0]
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ''
+      if (msg.includes('does not exist') || msg.includes('model')) {
+        // Fallback to dall-e-2 (supports only 1024x1024)
+        const response = await openai.images.generate({
+          model: 'dall-e-2',
+          prompt: finalPrompt.slice(0, 1000),
+          n: 1,
+          size: '1024x1024',
+        })
+        imageData = response.data?.[0]
+      } else {
+        throw e
+      }
+    }
 
-    const imageData = response.data?.[0]
     if (!imageData?.url) {
       return NextResponse.json({ error: 'Keine Bild-URL in der Antwort' }, { status: 500 })
     }
 
     return NextResponse.json({
       url: imageData.url,
-      revisedPrompt: imageData.revised_prompt || finalPrompt,
+      revisedPrompt: (imageData as { revised_prompt?: string }).revised_prompt || finalPrompt,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unbekannter Fehler'
