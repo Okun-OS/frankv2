@@ -114,7 +114,6 @@ export async function POST(req: NextRequest) {
       prompt: finalPrompt,
       n: 1,
       size,
-      response_format: 'url',
     })
 
     const imageData = response.data?.[0]
