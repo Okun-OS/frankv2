@@ -8,12 +8,30 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String   @default("Felix Okun")
-  company   String   @default("OKUN Systems")
-  role      String   @default("Founder & CEO")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String   @default("Felix Okun")
+  company        String   @default("OKUN Systems")
+  role           String   @default("Founder & CEO")
+  setupCompleted Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FounderProfile {
+  id                  String   @id @default(cuid())
+  founderName         String
+  companyName         String
+  companyDescription  String   @db.Text
+  targetCustomers     String   @db.Text
+  offers              String   @db.Text
+  currentRevenue      String?
+  currentCustomers    String?
+  acquisitionChannels String   @db.Text
+  biggestGoal         String   @db.Text
+  biggestChallenge    String   @db.Text
+  workingHoursPerDay  Int      @default(8)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model KPI {

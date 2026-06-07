@@ -46,15 +46,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch live data from the database
-    const [kpis, goals, bottlenecks, opportunities, alerts] = await Promise.all([
+    const [kpis, goals, bottlenecks, opportunities, alerts, founderProfile] = await Promise.all([
       prisma.kPI.findMany({ where: { isActive: true }, take: 10 }),
       prisma.goal.findMany({ where: { status: 'active' }, take: 5 }),
       prisma.bottleneck.findMany({ where: { status: { not: 'resolved' } }, take: 3, orderBy: { createdAt: 'desc' } }),
       prisma.opportunity.findMany({ where: { status: 'identified' }, take: 3 }),
       prisma.alert.findMany({ where: { isRead: false }, take: 5, orderBy: { createdAt: 'desc' } }),
+      prisma.founderProfile.findFirst(),
     ])
 
-    const liveContext = `
+    const profileContext = founderProfile ? `
+FOUNDER PROFIL:
+Name: ${founderProfile.founderName}
+Unternehmen: ${founderProfile.companyName}
+Was wir machen: ${founderProfile.companyDescription}
+Zielkunden: ${founderProfile.targetCustomers}
+Angebote: ${founderProfile.offers}
+Aktueller Umsatz: ${founderProfile.currentRevenue || 'nicht angegeben'}
+Aktive Kunden: ${founderProfile.currentCustomers || 'nicht angegeben'}
+Akquisitionskanäle: ${founderProfile.acquisitionChannels}
+Größtes Ziel: ${founderProfile.biggestGoal}
+Größtes Problem: ${founderProfile.biggestChallenge}
+Arbeitszeit/Tag: ${founderProfile.workingHoursPerDay}h
+` : ''
+
+    const liveContext = `${profileContext}
 LIVE UNTERNEHMENSDATEN (${new Date().toLocaleDateString('de-DE')}):
 
 KPIs:
