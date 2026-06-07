@@ -15,6 +15,8 @@ export async function GET() {
     scope: [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events',
     ],
   })
   return NextResponse.redirect(url)
