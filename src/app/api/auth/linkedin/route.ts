@@ -11,7 +11,7 @@ export async function GET() {
     client_id: clientId,
     redirect_uri: process.env.LINKEDIN_REDIRECT_URI || '',
     state: Math.random().toString(36).substring(7),
-    scope: 'openid profile email w_member_social r_basicprofile',
+    scope: 'openid profile email',
   })
 
   return NextResponse.redirect(
