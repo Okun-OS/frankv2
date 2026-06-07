@@ -17,6 +17,7 @@ export async function GET() {
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/calendar.readonly',
       'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
     ],
   })
   return NextResponse.redirect(url)
